@@ -1,0 +1,321 @@
+---
+title: "Olympic Medals: Matter of Nerves"
+author: "Dr Preet Deep Singh"
+date: "07/08/2021"
+output: 
+  pdf_document: 
+    fig_caption: yes
+---
+\begin{abstract}
+Using a dataset of over 120 years of Olympic history, Ifind that after 1950 the mean age of medal winners is higher than that of non-medal winners. This relationship is more pronounced in the case of Gold medalists. I hypothesize that Age is a proxy for experience of Olympic Games and show that the probability of getting a medal in the second appearance is higher than that in the first one. This could be due to experience, better handling of pressure and better preparation.
+\end{abstract}
+
+```{r getdata, echo=FALSE, message=FALSE, warning=FALSE}
+library(dplyr)
+library(readr)
+athlete_events <- read_csv("~/Downloads/archive/athlete_events.csv")
+
+###Medal rename
+athlete_events$Medcod<-ifelse(is.na(athlete_events$Medal),0,1)#If any medal
+athlete_events$Gold<-ifelse(athlete_events$Medal=="Gold",1,0)#If any medal
+athlete_events$Silver<-ifelse(athlete_events$Medal=="Silver",1,0)#If any medal
+athlete_events$Bronze<-ifelse(athlete_events$Medal=="Bronze",1,0)#If any medal
+
+#mean(athlete_events$Age[athlete_events$Medcod==1],na.rm = TRUE)
+#mean(athlete_events$Age[athlete_events$Medcod==0],na.rm = TRUE)
+#mean(athlete_events$Age,na.rm = TRUE)
+
+athmed<-filter(athlete_events,athlete_events$Medcod==1)
+athgold<-filter(athlete_events,athlete_events$Gold==1)
+athbronze<-filter(athlete_events,athlete_events$Bronze==1)
+athsilver<-filter(athlete_events,athlete_events$Silver==1)
+athnonmed<-filter(athlete_events,athlete_events$Medcod==0)
+
+meanage_pooled <-summarize(group_by(athlete_events, Year), meanage=mean(Age,na.rm=TRUE))
+meanage_nonmedal <-summarize(group_by(athnonmed, Year), meanage=mean(Age,na.rm=TRUE))
+meanage_silver <-summarize(group_by(athsilver, Year), meanage=mean(Age,na.rm=TRUE))
+meanage_bronze<-summarize(group_by(athbronze, Year), meanage=mean(Age,na.rm=TRUE))
+meanage_medal<-summarize(group_by(athmed, Year), meanage=mean(Age,na.rm=TRUE))
+meanage_gold<-summarize(group_by(athgold, Year), meanage=mean(Age,na.rm=TRUE))
+
+meanage_bronze$Type<-"Bronze"
+meanage_pooled$Type<-"Pooled"
+meanage_nonmedal$Type<-"NonMedal"
+meanage_medal$Type<-"Medal"
+meanage_gold$Type<-"Gold"
+meanage_silver$Type<-"Silver"
+
+ageoveryears<-rbind(meanage_bronze,meanage_gold)
+ageoveryears<-rbind(ageoveryears,meanage_medal)
+ageoveryears<-rbind(ageoveryears,meanage_nonmedal)
+ageoveryears<-rbind(ageoveryears,meanage_silver)
+
+library(ggplot2)
+
+```
+
+\section{Visualising Age and Success}
+I look at the age of all athletes that have competed at Olympics in the past 120 years. It has a mean of `r mean(athlete_events$Age,na.rm = TRUE)`. The mean age of all athletes that won a medal over the same time period is `r mean(athlete_events$Age[athlete_events$Medcod==1],na.rm = TRUE)`. The mean age of all athletes who did not win a medal during the same period is `r mean(athlete_events$Age[athlete_events$Medcod==0],na.rm = TRUE)`. As evident, there is very little difference in the mean age of atheletes who won and who didnt win. One reason for the same could be the quality of the competition where the difference is overcome by skill, training and practice.
+
+```{r summaryage,echo=FALSE, message=FALSE, warning=FALSE}
+print(summary(athlete_events$Age))
+
+athyoung<-filter(athlete_events,Age<18)
+athyoungrecent<-filter(athyoung,Year>1980)
+
+athold<-filter(athlete_events,Age>60)
+atholdrecent<-filter(athold,Year>1980)
+```
+\subsection{Low Age}
+A total of `r length(athyoung$ID)` participations have been seen at Olympics by athletes who were less than 18 years of age. Out of these `r length(athyoungrecent$ID)` have been after 1980. This number includes multiple participation by the same athlete as well. `r length(unique(athyoung$ID))` unique athletes have participated till date and those who competed after 1980 are `r length(unique(athyoungrecent$ID))`.
+
+\subsection{High Age}
+A total of `r length(athold$ID)` participations have been seen at Olympics by athletes who were more than 60 years of age. Out of these `r length(atholdrecent$ID)` have been after 1980. This number includes multiple participation by the same athlete as well. `r length(unique(athold$ID))` unique athletes have participated till date and those who competed after 1980 are `r length(unique(atholdrecent$ID))`.
+
+\subsection{Pooled Plot}
+A pooled plot of the age of athletes over the years shows much more variation before 1950. The mean age of 1928 Olympics is abnormally high. While the age has not been constant in any two years, the mean age has remained between 25 and 28 in this century.
+
+```{r CombinedPlot, echo=FALSE, message=FALSE, warning=FALSE}
+#Combined Plot
+a<-ggplot(ageoveryears, aes(x=Year,y= meanage))
+a<-a+geom_line(aes(colour=Type))+ylab("Mean Age")
+print(a)
+```
+
+
+\subsection{Gold Vs Non Medal}
+
+```{r GoldVsnonMedal,echo=FALSE, message=FALSE, warning=FALSE}
+###Plot of Gold Vs Non Medal
+ageoveryears4<-filter(ageoveryears,Type=="Gold"|Type=="NonMedal")
+d<-ggplot(ageoveryears4, aes(x=Year,y= meanage))
+d<-d+geom_line(aes(colour=Type))+ylab("Mean Age")+labs(title = "Mean age of Gold Medallists and non-medallists") #Definite Difference between Gold and non-Medals)
+print(d)
+agelater<-filter(ageoveryears,Year>1950)
+t.test(agelater$meanage[agelater$Type=="Gold"],agelater$meanage[agelater$Type=="NonMedal"])
+```
+In order to look at the difference between the Gold Medal winners and the non-medallists, we plot their mean age over the years. Starting 1950, the mean age of Gold Medallists has been higher than that of non-medallists other than in one instance. This could be because age represents experience. Olympics is an important event and there is a fair amount of pressure on the participants. Age or experience might assist in dealing with that pressure. We conduct a Welch Two Sample t-test, the p-value of the difference in mean of age of gold medallists and non-medallists is `r t.test(ageoveryears$meanage[ageoveryears$Type=="Gold"],ageoveryears$meanage[ageoveryears$Type=="NonMedal"])$p.value`, thereby indicating that the difference in age is not statistically significant. This could be because of the anomally in 1928. We limit our sample to post 1950. We find that the p value is not `r t.test(agelater$meanage[agelater$Type=="Gold"],agelater$meanage[agelater$Type=="NonMedal"])$p.value` which is fairly robust. 
+
+\subsection{Medal Vs Nonmedal}
+I also look at the difference in mean age between medallists and non-medallists. The mean ages are `r t.test(ageoveryears$meanage[ageoveryears$Type=="Medal"],ageoveryears$meanage[ageoveryears$Type=="NonMedal"])$estimate[1]`, the p value is `r t.test(ageoveryears$meanage[ageoveryears$Type=="Medal"],ageoveryears$meanage[ageoveryears$Type=="NonMedal"])$p.value` which indicates randomness in the results. 
+Similar to above, I look at values after 1950 and find that the mean ages are `r t.test(agelater$meanage[agelater$Type=="Medal"],agelater$meanage[agelater$Type=="NonMedal"])$estimate[1]`, the p value is `r t.test(agelater$meanage[agelater$Type=="Medal"],agelater$meanage[agelater$Type=="NonMedal"])$p.value` which indicates robustness.
+```{r medalVsNonPlot, echo=FALSE, message=FALSE, warning=FALSE}
+###Plot of Medal Vs Non Medal
+ageoveryears2<-filter(ageoveryears,Type=="Medal"|Type=="NonMedal")
+b<-ggplot(ageoveryears2, aes(x=Year,y= meanage))
+b<-b+geom_line(aes(colour=Type))+ylab("Mean Age")+labs(title = "Mean age of Medallists and non-medallists") #Now olders are winning medals
+print(b)
+```
+
+
+
+\subsection{Gold Vs Bronze}
+```{r GoldVsBronze, echo=FALSE}
+###Plot of Gold Vs Bronze
+ageoveryears3<-filter(ageoveryears,Type=="Gold"|Type=="Bronze")
+c<-ggplot(ageoveryears3, aes(x=Year,y= meanage))
+c<-c+geom_line(aes(colour=Type)) +ylab("Mean Age")+labs(title = "Mean age of Gold Medallist and Bronze-Medallists")#No Difference
+print(c)
+```
+I look at values after 1950 for the mean age of Gold medal winners and Bronze medal winners. and find that the mean ages are `r t.test(agelater$meanage[agelater$Type=="Gold"],agelater$meanage[agelater$Type=="Bronze"])$estimate[1]` and `r t.test(agelater$meanage[agelater$Type=="Gold"],agelater$meanage[agelater$Type=="Bronze"])$estimate[2]`  , the p value is `r t.test(agelater$meanage[agelater$Type=="Gold"],agelater$meanage[agelater$Type=="Bronze"])$p.value` which implies that the observed difference is random. This points to the tough competition at the Olympics.
+
+\section{Correlation} 
+
+The correlation between Whether or not someone won a medal and their age is 
+```{r Corr, echo=FALSE, message=FALSE, warning=FALSE}
+print(cor.test(athlete_events$Medcod,athlete_events$Age, use = "complete.obs")$estimate)
+print(cor.test(athlete_events$Medcod,athlete_events$Age, use = "complete.obs")$p.value)
+###See if we need a different test or this one
+
+```
+
+
+\section{Regression}
+We use Logistic regression to model the dependent variable of Success defined as getting a medal. 
+```{r regbase,echo=FALSE, message=FALSE, warning=FALSE}
+
+model<-(Medcod~Age+Height+Weight+as.factor(Sex))
+reg.data<-try(glm(model,data=athlete_events, na.action = na.exclude ),silent=TRUE)
+#summary(reg.data)
+```
+We use a pooled regression to model success as defined by winning a medal, depedent on age, while controlling for height, weight, and gender.  We see that the p value for Age is extremely significant at `r summary(reg.data)$coefficients[2,4]`, the estimate of `r summary(reg.data)$coefficients[2,1]` is not materially significant. Change of an year in age would lead to 0.001% increase in the probability of a medal. 
+\subsection{Controlling for Sport}
+In order to better understand the role age plays, we run regressions on subgroups of sports. We present a table of estimates of Age where the p value is less than 0.05. 
+```{r controllingforsport, echo=FALSE, message=FALSE, warning=FALSE}
+##Controlling for sport
+
+impact3<-data.frame()
+try(
+  for (i in 1:length(athlete_events$Sport)){
+    ath<-filter(athlete_events,athlete_events$Sport==unique(athlete_events$Sport)[i])
+    model<-(Medcod~Age+Height+Weight)
+    reg.data<-try(glm(model,data=ath, na.action = na.exclude ),silent=TRUE)
+    summary(reg.data)
+    impact3[i,1]<-unique(athlete_events$Sport)[i]
+    impact3[i,2]<-summary(reg.data)$coefficients[,1][2]
+    impact3[i,3]<-summary(reg.data)$coefficients[,4][2]
+    impact3[i,4]<-summary(reg.data)$coefficients[,1][3]
+    impact3[i,5]<-summary(reg.data)$coefficients[,4][2]
+    impact3[i,6]<-summary(reg.data)$coefficients[,1][4]
+    impact3[i,7]<-summary(reg.data)$coefficients[,4][2]
+  },silent = TRUE)
+colnames(impact3)<-c("Sport","Age","AgeP","Height","heightP","Weight","WeightP")
+
+impact3age<-filter(impact3,impact3$AgeP<0.05)
+impact3age<-select(impact3age,"Sport","Age")
+impact3age<-impact3age[order(impact3age$Age,decreasing = TRUE),]
+print(impact3age)
+```
+We see that Age has a different role to play across sports. While `r impact3age$Sport[1]` sees the maximum positive impact of age, `r impact3age$Sport[length(impact3age$Sport)]`sees the maximum negative impact of age. All sports that have a negative sign, have a negative impact of increasing age, on the likelihood of a medal.
+
+
+\subsection{Controlling for Sport and Year}
+```{r controllingforsportyear,echo=FALSE, message=FALSE, warning=FALSE}
+###Controlling for year
+impact<-data.frame()
+try(
+for (i in 1:length(athlete_events$Sport)){
+  ath<-filter(athlete_events,athlete_events$Sport==unique(athlete_events$Sport)[i])
+model<-(Medcod~Age+Height+Weight+as.factor(Year))
+reg.data<-try(lm(model,data=ath, na.action = na.exclude ),silent=TRUE)
+summary(reg.data)
+impact[i,1]<-unique(athlete_events$Sport)[i]
+impact[i,2]<-summary(reg.data)$coefficients[,1][2]
+impact[i,3]<-summary(reg.data)$coefficients[,4][2]
+impact[i,4]<-summary(reg.data)$coefficients[,1][3]
+impact[i,5]<-summary(reg.data)$coefficients[,4][2]
+impact[i,6]<-summary(reg.data)$coefficients[,1][4]
+impact[i,7]<-summary(reg.data)$coefficients[,4][2]
+},silent = TRUE)
+colnames(impact)<-c("Sport","Age","AgeP","Height","heightP","Weight","WeightP")
+
+impactage<-filter(impact,impact$AgeP<0.05)
+impactage<-select(impactage,"Sport","Age")
+impactage<-impactage[order(impactage$Age,decreasing = TRUE),]
+print(impactage)
+```
+I also control for Years as factors and repeat the analysis. While `r impactage$Sport[1]` sees the maximum positive impact of age, `r impactage$Sport[length(impactage$Sport)]`sees the least impact of age.  While controlling for years, we see that there is no sport that has a negative impact on likelihood of medal due to age. 
+
+\subsection{Controlling for Event and Year}
+```{r controllingforevent,echo=FALSE, message=FALSE, warning=FALSE}
+###Controlling for Event
+impact2<-data.frame()
+try(
+  for (i in 1:length(athlete_events$Event)){
+    ath<-filter(athlete_events,athlete_events$Event==unique(athlete_events$Event)[i])
+    model<-(Medcod~Age+Height+Weight+as.factor(Year))
+    reg.data<-try(lm(model,data=ath, na.action = na.exclude ),silent=TRUE)
+    summary(reg.data)
+    impact2[i,1]<-unique(athlete_events$Event)[i]
+    impact2[i,2]<-summary(reg.data)$coefficients[,1][2]
+    impact2[i,3]<-summary(reg.data)$coefficients[,4][2]
+    impact2[i,4]<-summary(reg.data)$coefficients[,1][3]
+    impact2[i,5]<-summary(reg.data)$coefficients[,4][2]
+    impact2[i,6]<-summary(reg.data)$coefficients[,1][4]
+    impact2[i,7]<-summary(reg.data)$coefficients[,4][2]
+  },silent = TRUE)
+colnames(impact2)<-c("Event","Age","AgeP","Height","heightP","Weight","WeightP")
+
+impact2age<-filter(impact2,impact2$AgeP<0.05)
+impact2age<-select(impact2age,"Event","Age")
+impact2age<-impact2age[order(impact2age$Age,decreasing = TRUE),]
+print(impact2age)
+```
+I go one level deeper and look at the same analysis at event level. An event is one rendition of a sport. For example Swimming is a sport but 100m, 200m and 100m backstroke are different events. While `r impact2age$Sport[1]` sees the maximum positive impact of age, `r impact2age$Sport[length(impact2age$Sport)]`sees the least impact of age. As my data has become granular, there are fewer observations per regression set and the impact of Age has also becomes significant for fewer events. 
+
+```{r workingwithgold, echo=FALSE, message=FALSE, warning=FALSE}
+##Working with Gold
+model<-(Gold~Age+Height+Weight+as.factor(Sex))
+reg.data<-try(lm(model,data=athlete_events, na.action = na.exclude ),silent=TRUE)
+#summary(reg.data) 
+```
+
+\section{Medals Across Outings}
+
+```{r multiolymp, echo=FALSE}
+athsametry<-athlete_events%>%group_by(ID)%>%summarise(Appearances=length(Medcod), WhetherMedal=sum(Medcod),DiffOlympics=length(unique(Year))) #This works
+athsame<-filter(athsametry,DiffOlympics>1,WhetherMedal>0) #only useful ones
+athsame<-merge(athsame, athlete_events,by="ID",all.x = TRUE,all.y = FALSE)#We have a full sheet with only double olympians with medals
+
+datalist = list()
+for (i in 1:length(unique(athsame$ID))){
+ # for (i in 1:5){
+       numbridge<-data.frame()
+  athnum<-filter(athsame,ID==unique(athsame$ID)[i])
+  athnum$IDYear<-paste(athnum$ID,athnum$Year)
+  for (j in 1:length(unique(athnum$Year))){
+    numbridge[j,1]<-unique(sort(athnum$Year))[j]
+    numbridge[j,2]<-j
+colnames(numbridge)<-c("Year","Count")
+
+  }
+  athnum<-merge(athnum,numbridge,by="Year",all.x=TRUE,all.y=TRUE)
+ datalist[[i]]<-athnum
+}
+athmulti = do.call(rbind, datalist)
+```
+
+I look at Olympians who have participated in multiple versions of Olympics across years and have bagged at least one medal. I filter this to see whether the medal tally in subsequent appearances. I hypothesize that it is hard to maintain supremacy in such a competitive tournament and athletes would not be able to win in subsequent versions.
+We see a list of `r length(unique(athmulti$ID))` athletes that have competed in multiple Olympics with the highest being `r athmulti$Name[athmulti$Count==max(athmulti$Count)]` Olympics. We do not consider breaks. For example if an athlete competed in two Olympics across 8 years, we still consider that as two participations irrespective of whether it was consecutive or not.
+
+\subsection{Pooled}
+
+```{r medalpooled,echo=FALSE}
+athmultimedalpooled<-athmulti%>%group_by(Count)%>%summarise(AvgMedals=mean(Medcod)) #This is overall, showing no fun
+m1<-ggplot(athmultimedalpooled, aes(x=Count,y= AvgMedals))
+m1<-m1+geom_bar(stat = "identity")+xlab("Appearance")+ylab("Average Number of Medals") #Now olders are winning medals
+print(m1)
+#t.test(athmulti$Medcod[athmulti$Count==1],athmulti$Medcod[athmulti$Count==2])
+```
+If we look at the average number of medals (any color) for each iteration of appearance at the Olympics we find that the second outing is more likely to result in a medal than the first. I run a Welch Two Sample t-test on the medal victories in the first appearance versus a medal in the second appearance. The mean values are `r t.test(athmulti$Medcod[athmulti$Count==1],athmulti$Medcod[athmulti$Count==2])$estimate[1]` and `r t.test(athmulti$Medcod[athmulti$Count==1],athmulti$Medcod[athmulti$Count==2])$estimate[2]` with a p value of `r t.test(athmulti$Medcod[athmulti$Count==1],athmulti$Medcod[athmulti$Count==2])$p.value` which indicates that this relationship is statistically highly significant. 
+
+
+\subsection{Post 1950}
+```{r medals1950, echo=FALSE}
+#Get it for after 1950 also
+athmultimedallater<-athmulti%>%filter(Year>1950)%>%group_by(Count)%>%summarise(AvgMedals=mean(Medcod)) #This is overall, showing no fun
+m2<-ggplot(athmultimedallater, aes(x=Count,y= AvgMedals))
+m2<-m2+geom_bar(stat = "identity")+xlab("Appearance")+ylab("Average Number of Medals") #Now olders are winning medals
+print(m2)
+
+athmultilater<-filter(athmulti,Year>1950)
+#t.test(athmultilater$Medcod[athmultilater$Count==1],athmultilater$Medcod[athmultilater$Count==2])
+```
+Similarly when I look at results from after 1950, I see that the man number of medals in the first appearance are `r t.test(athmultilater$Medcod[athmultilater$Count==1],athmultilater$Medcod[athmultilater$Count==2])$estimate[1]` as compared to a mean value of `r t.test(athmultilater$Medcod[athmultilater$Count==1],athmultilater$Medcod[athmultilater$Count==2])$estimate[2]` in the second outing. The p-value for this difference is highly significant at `r t.test(athmultilater$Medcod[athmultilater$Count==1],athmultilater$Medcod[athmultilater$Count==2])$p.value`.
+\subsection{Gold Medals}
+```{r goldpooled,echo=FALSE}
+athmultigoldpooled<-athmulti%>%group_by(Count)%>%summarise(AvgMedals=mean(Gold,na.rm=TRUE)) #This is overall, showing no fun
+g1<-ggplot(athmultigoldpooled, aes(x=Count,y= AvgMedals))
+g1<-g1+geom_bar(stat = "identity")+xlab("Appearance")+ylab("Average Number of Gold Medals") #Now olders are winning medals
+print(g1)
+
+
+#t.test(athmulti$Gold[athmulti$Count==1],athmulti$Gold[athmulti$Count==2])
+```
+While the maximum appearances of an athlete to have won a gold medal are `r max(athmultigoldpooled$Count[athmultigoldpooled$AvgMedals>0],na.rm=TRUE)`, I am interested in looking at how gold medals stack across appearances. The graph shows that the average number of Gold Medals are higher in subsequent appearances, though by a very thin margin. I conduct a Welch Two Sample t-test and see that the p value of `r t.test(athmulti$Gold[athmulti$Count==1],athmulti$Gold[athmulti$Count==2])$p.value` is not significant, thereby signalling that the difference in success based on the iteration of appearance is not there. We look at the same analysis for a more recent period, that is after 1950 and find a similar p value. 
+
+We conclude that the difference in success defined as winning a gold medal is not influenced by whether it is the first of the second appearance but when defined as winning a medal, the sequence of the appearance matters.
+
+It coincides with our reasoning on why higher age seems to be correlated with medals even when controlling for height, weight, and gender.
+
+
+\subsection{Gold Medals, post 1950}
+```{r gold1950, echo=FALSE}
+athmultigoldlater<-athmulti%>%filter(Year>1950)%>%group_by(Count)%>%summarise(AvgMedals=mean(Gold,na.rm=TRUE)) #This is overall, showing no fun
+g2<-ggplot(athmultigoldlater, aes(x=Count,y= AvgMedals))
+g2<-g2+geom_bar(stat = "identity")+xlab("Appearance")+ylab("Average Number of Gold Medals") #Now olders are winning medals
+#print(g2)
+
+athmultilater<-filter(athmulti,Year>1950)
+#t.test(athmultilater$Gold[athmultilater$Count==1],athmultilater$Gold[athmultilater$Count==2])
+```
+\section{ToDo}
+The source of this data is https://www.kaggle.com/heesoo37/120-years-of-olympic-history-athletes-and-results/metadata.
+
+\begin{itemize}
+\item Limitations
+\item Titles for all graphs
+\end{itemize}
+
+
+
