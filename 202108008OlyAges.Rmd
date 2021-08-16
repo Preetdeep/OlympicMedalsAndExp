@@ -7,7 +7,7 @@ output:
     fig_caption: yes
 ---
 \begin{abstract}
-Using a dataset of over 120 years of Olympic history, Ifind that after 1950 the mean age of medal winners is higher than that of non-medal winners. This relationship is more pronounced in the case of Gold medalists. I hypothesize that Age is a proxy for experience of Olympic Games and show that the probability of getting a medal in the second appearance is higher than that in the first one. This could be due to experience, better handling of pressure and better preparation.
+Using a data of over 120 years of Olympic history, I find that after 1950 the mean age of medal winners is higher than that of non-medal winners. This relationship is more pronounced in the case of Gold medalists. I hypothesize that Age is a proxy for experience of Olympic Games and show that the probability of getting a medal in the second appearance is higher than that in the first one. This could be due to experience, better handling of pressure, and better preparation.
 \end{abstract}
 
 ```{r getdata, echo=FALSE, message=FALSE, warning=FALSE}
@@ -92,13 +92,13 @@ d<-ggplot(ageoveryears4, aes(x=Year,y= meanage))
 d<-d+geom_line(aes(colour=Type))+ylab("Mean Age")+labs(title = "Mean age of Gold Medallists and non-medallists") #Definite Difference between Gold and non-Medals)
 print(d)
 agelater<-filter(ageoveryears,Year>1950)
-t.test(agelater$meanage[agelater$Type=="Gold"],agelater$meanage[agelater$Type=="NonMedal"])
+#t.test(agelater$meanage[agelater$Type=="Gold"],agelater$meanage[agelater$Type=="NonMedal"])
 ```
-In order to look at the difference between the Gold Medal winners and the non-medallists, we plot their mean age over the years. Starting 1950, the mean age of Gold Medallists has been higher than that of non-medallists other than in one instance. This could be because age represents experience. Olympics is an important event and there is a fair amount of pressure on the participants. Age or experience might assist in dealing with that pressure. We conduct a Welch Two Sample t-test, the p-value of the difference in mean of age of gold medallists and non-medallists is `r t.test(ageoveryears$meanage[ageoveryears$Type=="Gold"],ageoveryears$meanage[ageoveryears$Type=="NonMedal"])$p.value`, thereby indicating that the difference in age is not statistically significant. This could be because of the anomally in 1928. We limit our sample to post 1950. We find that the p value is not `r t.test(agelater$meanage[agelater$Type=="Gold"],agelater$meanage[agelater$Type=="NonMedal"])$p.value` which is fairly robust. 
+In order to look at the difference between the Gold Medal winners and the non-medallists, we plot their mean age over the years. Starting 1950, the mean age of Gold Medallists has been higher than that of non-medallists other than in one instance. This could be because age represents experience. Olympics is an important event and there is a fair amount of pressure on the participants. Age or experience might assist in dealing with that pressure. We conduct a Welch Two Sample t-test, the p-value of the difference in mean of age of gold medallists and non-medallists is `r t.test(agelater$meanage[agelater$Type=="Gold"],agelater$meanage[agelater$Type=="NonMedal"])$p.value` which is fairly robust. When we extend our sample to include data before 1950 we see that the p-value is `r t.test(ageoveryears$meanage[ageoveryears$Type=="Gold"],ageoveryears$meanage[ageoveryears$Type=="NonMedal"])$p.value`. This could be because of the anomaly in 1928. 
 
 \subsection{Medal Vs Nonmedal}
-I also look at the difference in mean age between medallists and non-medallists. The mean ages are `r t.test(ageoveryears$meanage[ageoveryears$Type=="Medal"],ageoveryears$meanage[ageoveryears$Type=="NonMedal"])$estimate[1]`, the p value is `r t.test(ageoveryears$meanage[ageoveryears$Type=="Medal"],ageoveryears$meanage[ageoveryears$Type=="NonMedal"])$p.value` which indicates randomness in the results. 
-Similar to above, I look at values after 1950 and find that the mean ages are `r t.test(agelater$meanage[agelater$Type=="Medal"],agelater$meanage[agelater$Type=="NonMedal"])$estimate[1]`, the p value is `r t.test(agelater$meanage[agelater$Type=="Medal"],agelater$meanage[agelater$Type=="NonMedal"])$p.value` which indicates robustness.
+I also look at the difference in mean age between medallists and non-medallists. Similar to above, I find that the mean ages are `r t.test(agelater$meanage[agelater$Type=="Medal"],agelater$meanage[agelater$Type=="NonMedal"])$estimate[1]`, the p value is `r t.test(agelater$meanage[agelater$Type=="Medal"],agelater$meanage[agelater$Type=="NonMedal"])$p.value` which indicates robustness. If we extend our sample to before 1950, we see that while mean ages are `r t.test(ageoveryears$meanage[ageoveryears$Type=="Medal"],ageoveryears$meanage[ageoveryears$Type=="NonMedal"])$estimate[1]`, the p value of `r t.test(ageoveryears$meanage[ageoveryears$Type=="Medal"],ageoveryears$meanage[ageoveryears$Type=="NonMedal"])$p.value` is not significant. 
+
 ```{r medalVsNonPlot, echo=FALSE, message=FALSE, warning=FALSE}
 ###Plot of Medal Vs Non Medal
 ageoveryears2<-filter(ageoveryears,Type=="Medal"|Type=="NonMedal")
