@@ -5,7 +5,6 @@ date: "21/08/2021"
 output: 
   pdf_document: 
     fig_caption: yes
-    fig_height: 6
     number_sections: yes
   html_document: 
     toc: yes
@@ -15,20 +14,20 @@ editor_options:
   chunk_output_type: console
 ---
 \begin{abstract}
-Using a data of over 120 years of Olympic history, I find that the mean age of medal winners is higher than that of non-medal winners. This relationship is more pronounced in the case of Gold medalists. I hypothesize that Age is a proxy for experience of Olympic Games and use show that the probability of getting a medal in the second appearance is higher than that in the first one. This could be due to experience, better handling of pressure, and better preparation. Our results are robust to change in models, controls, proxies, and years.
+Using a data of over 120 years of Olympic history, I find that the mean age of medal winners is higher than that of non-medal winners. This relationship is more pronounced in the case of Gold medalists. I hypothesize that Age is a proxy for experience of Olympic Games and use show that the probability of getting a medal in the second appearance is higher than that in the first one. This could be due to experience, better handling of pressure, and better preparation. Our results are robust to change in models, controls, proxies, and years. My results offer 'significant' hope to non-medalists at Tokyo Olympics.
 \end{abstract}
-```{r setup1, include=FALSE}
-# Register an inline hook:
-#knitr::knit_hooks$set(inline = function(x) {
-#  x <- sprintf("%1.2f", x)
-#  paste(x, collapse = ", ")
-#})
-```
+
+\section{Introduction}
+I look at the age of athletes that have competed in Olympics and see that there is a difference between the age of those who got a medal and those who did not. This difference is statistically significant post 1950. We examine this further and see that the difference is more pronounced in case of Gold medalists and non-medalists. While the difference is not much, in my opinion higher age would lead to slower reflexes and worse performance. I therefore explore whether there is a component of experience in this. I use the number of appearances in Olympics as a measure of experience. I hypothesize that more exposure to the big stage would allow players to hold their nerves and therefore improve their performance. There are a host of psychological factors at play here as well. There is fear of repeated non-performance following a medal-less performance in the first time. I find that athletes are more likely to get a medal in their subsequent appearances. Out results are consistent in direction when we control for Years, Sports, Age, Gender, Weight and Height. Apart from establishing the role of experince, my results offer a ray of statistical hope to non-medalists from Tokyo Olympics.
+
+Our analysis does not include data from Tokyo Olympics in 2021. Since we use more than a century worth of data, I expect my results to hold through. 
 
 ```{r getdata, echo=FALSE, message=FALSE, warning=FALSE}
 library(dplyr)
 library(readr)
+library(xtable)
 library(stargazer)
+library(knitr)
 
 options(digits=2) #This ensures that all numbers are truncated to two digits. However, some p values are not showing the right way.
 athlete_events <- read_csv("~/Downloads/archive/athlete_events.csv")
@@ -80,6 +79,7 @@ I look at the age of all athletes that have competed at Olympics in the past 120
 
 ```{r summaryage,echo=FALSE, message=FALSE, warning=FALSE}
 print(summary(athlete_events$Age))
+#stargazer(athlete_events$Age,header = FALSE,title = "Summary of Age of Olympians in the dataset") ##This is taking a lot of time to process.
 
 athyoung<-filter(athlete_events,Age<18)
 athyoungrecent<-filter(athyoung,Year>1980)
@@ -99,7 +99,7 @@ A pooled plot of the age of athletes over the years shows much more variation be
 ```{r CombinedPlot, echo=FALSE, message=FALSE, warning=FALSE}
 #Combined Plot
 a<-ggplot(ageoveryears, aes(x=Year,y= meanage))
-a<-a+geom_line(aes(colour=Type))+ylab("Mean Age")+labs(title = "Mean age of Medalists and non-medalists") 
+a<-a+geom_line(aes(colour=Type))+ylab("Mean Age")+labs(title = "Mean age of Gold, Silver, Bronze medalists and non-medalists") 
 print(a)
 ```
 
@@ -140,121 +140,19 @@ print(c)
 ```
 I look at values after 1950 for the mean age of Gold medal winners and Bronze medal winners. and find that the mean ages are `r t.test(agelater$meanage[agelater$Type=="Gold"],agelater$meanage[agelater$Type=="Bronze"])$estimate[1]` and `r t.test(agelater$meanage[agelater$Type=="Gold"],agelater$meanage[agelater$Type=="Bronze"])$estimate[2]`  , the p value is `r t.test(agelater$meanage[agelater$Type=="Gold"],agelater$meanage[agelater$Type=="Bronze"])$p.value` which implies that the observed difference is random. This points to the tough competition at the Olympics where the difference between medalists is not as much as the difference between a medalist and a non-medalist..
 
-\section{Correlation} 
-
-The correlation between Whether or not someone won a medal and their age is 
-```{r Corr, echo=FALSE, message=FALSE, warning=FALSE}
-print(cor.test(athlete_events$Medcod,athlete_events$Age, use = "complete.obs")$estimate)
-print(cor.test(athlete_events$Medcod,athlete_events$Age, use = "complete.obs")$p.value)
-###See if we need a different test or this one
-
-```
-
 
 \section{Regression}
 We use Logistic regression to model the dependent variable of Success defined as getting a medal. 
 Our model is 
-$\ $
+
 ```{r regbase,echo=FALSE, message=FALSE, warning=FALSE,results='asis'}
 
 model<-(Medcod~Age+Height+Weight+as.factor(Sex))
 reg.data<-try(glm(model,data=athlete_events, na.action = na.exclude ),silent=TRUE)
-stargazer(reg.data, title="GLM Regression Results", column.labels=c("Whether Medal"),no.space=TRUE,float=FALSE,omit = "Sex",  style="qje", add.lines = list(c("Gender Controls", "Yes")), header=FALSE)
+stargazer(reg.data, title="GLM Regression Results for Medal on Age", column.labels=c("Whether Medal"),no.space=TRUE, omit = "Sex",  style="qje", add.lines = list(c("Gender Controls", "Yes")), header=FALSE)
 #summary(reg.data)
 ```
 We use a pooled regression to model success as defined by winning a medal, dependent on age, while controlling for height, weight, and gender.  We see that the p value for Age is extremely significant at `r summary(reg.data)$coefficients[2,4]`, but the estimate of `r summary(reg.data)$coefficients[2,1]` is not materially significant. Change of an year in age would lead to 0.001% increase in the probability of a medal. 
-\subsection{Controlling for Sport}
-In order to better understand the role age plays, we run regressions on subgroups of sports. We present a table of estimates of Age where the p value is less than 0.05. 
-```{r controllingforsport, echo=FALSE, message=FALSE, warning=FALSE}
-##Controlling for sport
-
-impact3<-data.frame()
-try(
-  for (i in 1:length(athlete_events$Sport)){
-    ath<-filter(athlete_events,athlete_events$Sport==unique(athlete_events$Sport)[i])
-    model<-(Medcod~Age+Height+Weight)
-    reg.data<-try(glm(model,data=ath, na.action = na.exclude ),silent=TRUE)
-    summary(reg.data)
-    impact3[i,1]<-unique(athlete_events$Sport)[i]
-    impact3[i,2]<-summary(reg.data)$coefficients[,1][2]
-    impact3[i,3]<-summary(reg.data)$coefficients[,4][2]
-    impact3[i,4]<-summary(reg.data)$coefficients[,1][3]
-    impact3[i,5]<-summary(reg.data)$coefficients[,4][2]
-    impact3[i,6]<-summary(reg.data)$coefficients[,1][4]
-    impact3[i,7]<-summary(reg.data)$coefficients[,4][2]
-  },silent = TRUE)
-colnames(impact3)<-c("Sport","Age","AgeP","Height","heightP","Weight","WeightP")
-
-impact3age<-filter(impact3,impact3$AgeP<0.05)
-impact3age<-select(impact3age,"Sport","Age")
-impact3age<-impact3age[order(impact3age$Age,decreasing = TRUE),]
-print(impact3age)
-```
-We see that Age has a different role to play across sports. While `r impact3age$Sport[1]` sees the maximum positive impact of age, `r impact3age$Sport[length(impact3age$Sport)]`sees the maximum negative impact of age. All sports that have a negative sign, have a negative impact of increasing age, on the likelihood of a medal.
-
-
-\subsection{Controlling for Sport and Year}
-```{r controllingforsportyear,echo=FALSE, message=FALSE, warning=FALSE}
-###Controlling for year
-impact<-data.frame()
-try(
-for (i in 1:length(athlete_events$Sport)){
-  ath<-filter(athlete_events,athlete_events$Sport==unique(athlete_events$Sport)[i])
-model<-(Medcod~Age+Height+Weight+as.factor(Year))
-reg.data<-try(lm(model,data=ath, na.action = na.exclude ),silent=TRUE)
-summary(reg.data)
-impact[i,1]<-unique(athlete_events$Sport)[i]
-impact[i,2]<-summary(reg.data)$coefficients[,1][2]
-impact[i,3]<-summary(reg.data)$coefficients[,4][2]
-impact[i,4]<-summary(reg.data)$coefficients[,1][3]
-impact[i,5]<-summary(reg.data)$coefficients[,4][2]
-impact[i,6]<-summary(reg.data)$coefficients[,1][4]
-impact[i,7]<-summary(reg.data)$coefficients[,4][2]
-},silent = TRUE)
-colnames(impact)<-c("Sport","Age","AgeP","Height","heightP","Weight","WeightP")
-
-impactage<-filter(impact,impact$AgeP<0.05)
-impactage<-select(impactage,"Sport","Age")
-impactage<-impactage[order(impactage$Age,decreasing = TRUE),]
-print(impactage)
-```
-I also control for Years as factors and repeat the analysis. While `r impactage$Sport[1]` sees the maximum positive impact of age, `r impactage$Sport[length(impactage$Sport)]`sees the least impact of age.  While controlling for years, we see that there is no sport that has a negative impact on likelihood of medal due to age. 
-
-\subsection{Controlling for Event and Year}
-```{r controllingforevent,echo=FALSE, message=FALSE, warning=FALSE}
-###Controlling for Event
-impact2<-data.frame()
-try(
-  for (i in 1:length(athlete_events$Event)){
-    ath<-filter(athlete_events,athlete_events$Event==unique(athlete_events$Event)[i])
-    model<-(Medcod~Age+Height+Weight+as.factor(Year))
-    reg.data<-try(lm(model,data=ath, na.action = na.exclude ),silent=TRUE)
-    summary(reg.data)
-    impact2[i,1]<-unique(athlete_events$Event)[i]
-    impact2[i,2]<-summary(reg.data)$coefficients[,1][2]
-    impact2[i,3]<-summary(reg.data)$coefficients[,4][2]
-    impact2[i,4]<-summary(reg.data)$coefficients[,1][3]
-    impact2[i,5]<-summary(reg.data)$coefficients[,4][2]
-    impact2[i,6]<-summary(reg.data)$coefficients[,1][4]
-    impact2[i,7]<-summary(reg.data)$coefficients[,4][2]
-  },silent = TRUE)
-colnames(impact2)<-c("Event","Age","AgeP","Height","heightP","Weight","WeightP")
-
-impact2age<-filter(impact2,impact2$AgeP<0.05)
-impact2age<-select(impact2age,"Event","Age")
-impact2age<-impact2age[order(impact2age$Age,decreasing = TRUE),]
-print(impact2age)
-```
-I go one level deeper and look at the same analysis at event level. An event is one rendition of a sport. For example Swimming is a sport but 100m, 200m and 100m backstroke are different events. While `r impact2age$Sport[1]` sees the maximum positive impact of age, `r impact2age$Sport[length(impact2age$Sport)]`sees the least impact of age. As my data has become granular, there are fewer observations per regression set and the impact of Age has also becomes significant for fewer events. 
-
-```{r workingwithgold, echo=FALSE, message=FALSE, warning=FALSE,results='asis'}
-##Working with Gold
-model<-(Gold~Age+Height+Weight+as.factor(Sex))
-reg.data<-try(lm(model,data=athlete_events, na.action = na.exclude ),silent=TRUE)
-stargazer(reg.data, title="GLM Regression Results on Whether Gold Medal", column.labels=c("Whether Gold Medal"),no.space=TRUE,float=FALSE,omit = "Sex",  style="qje", add.lines = list(c("Gender Controls", "Yes")), header=FALSE)
-#summary(reg.data) 
-#3 WHAT IS THIS DOING HERE? IT IS NOT RUN OR SHOWN ANYWHere
-```
 
 \section{Medals Across Outings}
 
@@ -289,7 +187,7 @@ We see a list of `r length(unique(athmulti$ID))` athletes that have competed in 
 ```{r medalpooled,echo=FALSE}
 athmultimedalpooled<-athmulti%>%group_by(Count)%>%summarise(AvgMedals=mean(Medcod)) #This is overall, showing no fun
 m1<-ggplot(athmultimedalpooled, aes(x=Count,y= AvgMedals))
-m1<-m1+geom_bar(stat = "identity")+xlab("Appearance")+ylab("Average Number of Medals") #Now olders are winning medals
+m1<-m1+geom_bar(stat = "identity")+xlab("Appearance")+ylab("Average Number of Medals") +labs(title = "Average Number of Medals across Appearances")#Now olders are winning medals
 print(m1)
 #t.test(athmulti$Medcod[athmulti$Count==1],athmulti$Medcod[athmulti$Count==2])
 ```
@@ -301,7 +199,7 @@ If we look at the average number of medals (any color) for each iteration of app
 #Get it for after 1950 also
 athmultimedallater<-athmulti%>%filter(Year>1950)%>%group_by(Count)%>%summarise(AvgMedals=mean(Medcod)) #This is overall, showing no fun
 m2<-ggplot(athmultimedallater, aes(x=Count,y= AvgMedals))
-m2<-m2+geom_bar(stat = "identity")+xlab("Appearance")+ylab("Average Number of Medals") #Now olders are winning medals
+m2<-m2+geom_bar(stat = "identity")+xlab("Appearance")+ylab("Average Number of Medals") +labs(title = "Average Number of Medals across Appearances post 1950")#Now olders are winning medals
 print(m2)
 
 athmultilater<-filter(athmulti,Year>1950)
@@ -313,7 +211,7 @@ The numbers from the pooled sample as well as recent sample are very similar and
 ```{r goldpooled,echo=FALSE}
 athmultigoldpooled<-athmulti%>%group_by(Count)%>%summarise(AvgMedals=mean(Gold,na.rm=TRUE)) #This is overall, showing no fun
 g1<-ggplot(athmultigoldpooled, aes(x=Count,y= AvgMedals))
-g1<-g1+geom_bar(stat = "identity")+xlab("Appearance")+ylab("Average Number of Gold Medals") #Now olders are winning medals
+g1<-g1+geom_bar(stat = "identity")+xlab("Appearance")+ylab("Average Number of Gold Medals")+labs(title = "Average Number of Gold medals across Appearances") #Now olders are winning medals
 print(g1)
 #t.test(athmulti$Gold[athmulti$Count==1],athmulti$Gold[athmulti$Count==2])
 ```
@@ -328,7 +226,7 @@ It coincides with our reasoning on why higher age seems to be correlated with me
 ```{r gold1950, echo=FALSE}
 athmultigoldlater<-athmulti%>%filter(Year>1950)%>%group_by(Count)%>%summarise(AvgMedals=mean(Gold,na.rm=TRUE)) #This is overall, showing no fun
 g2<-ggplot(athmultigoldlater, aes(x=Count,y= AvgMedals))
-g2<-g2+geom_bar(stat = "identity")+xlab("Appearance")+ylab("Average Number of Gold Medals") #Now olders are winning medals
+g2<-g2+geom_bar(stat = "identity")+xlab("Appearance")+ylab("Average Number of Gold Medals")+labs(title = "Average Number of Gold Medals across Appearances post 1950") #Now olders are winning medals
 #print(g2)
 
 athmultilater<-filter(athmulti,Year>1950)
@@ -337,7 +235,7 @@ athmultilater<-filter(athmulti,Year>1950)
 
 \section{Regression on Appearances}
 ADD MODEL
-Our model is $Gold Gold= \Beta_1 Count2+Age+ Height+ Weight+Sex +Year+Sport$
+Our model is $$Gold= \alpha + \beta_1 Appearances+\beta_2 Age+ \beta_3 Height+ \beta_4 Weight+\beta_5 Sex +\beta_6 Year+\beta_7 Sport+ \epsilon$$
 ```{r regappeargold, echo=FALSE,results='asis'}
 athmultitruncated<-unique(select(athmulti, IDYear, Count))#Else Multiple events in the same year.
 athlete_events$IDYear<-paste(athlete_events$ID,athlete_events$Year)
@@ -348,7 +246,7 @@ athlete_events2$Year<-as.factor(athlete_events2$Year)
     model<-(Gold~ Count2+Age+ Height+ Weight+Sex +Year+Sport)#Count is the one that counts unique years
     reg.data<-try(glm(model,data=athlete_events2, na.action = na.exclude ),silent=TRUE) #Data has to be Count in front of Athlete events
     
-    stargazer(reg.data, title="GLM Regression Results for Gold Medal",no.space=TRUE,float=FALSE,omit = c("Sex","Year","Sport"),omit.labels = c("Control for Sex","Control for Year","Control for Sport"),  style="qje", header=FALSE, covariate.labels = c("Appearances", "Age", "Height",
+    stargazer(reg.data, title="GLM Regression Results for Gold Medal on Appearances",no.space=TRUE, omit = c("Sex","Year","Sport"),omit.labels = c("Control for Sex","Control for Year","Control for Sport"),  style="qje", header=FALSE, covariate.labels = c("Appearances", "Age", "Height",
                                "Weight"))
 #    summary(reg.data)
 ```
@@ -359,7 +257,7 @@ We see from the regression that Age is now negative and Count is positive. It is
     model<-(Medcod~ Count2+Age+ Height+ Weight+Sex +Year+Sport)#Count is the one that counts unique years
     reg.data<-try(glm(model,data=athlete_events2, na.action = na.exclude ),silent=TRUE) #Data has to be Count in front of Athlete events
     
-       stargazer(reg.data, title="GLM Regression Results for Medal", column.labels=c("Whether Medal"),no.space=TRUE,float=FALSE,omit = c("Sex","Year","Sport"),omit.labels = c("Control for Sex","Control for Year","Control for Sport"),  style="qje", header=FALSE, covariate.labels = c("Appearances", "Age", "Height",
+       stargazer(reg.data, title="GLM Regression Results for Medal on Appearances", column.labels=c("Whether Medal"),no.space=TRUE, omit = c("Sex","Year","Sport"),omit.labels = c("Control for Sex","Control for Year","Control for Sport"),  style="qje", header=FALSE, covariate.labels = c("Appearances", "Age", "Height",
                                "Weight"))
 ```
 We repeat this exercise using MedCod as the dependent variable to model whether winning any medal is dependent on the number of appearances and age controlling for height, weight, year, and sport. We see that the coefficient has gone up `r summary(reg.data)$coefficients[2,1]` and is statistically significant with a p-value of `r summary(reg.data)$coefficients[2,4]`. For the sake of hygeine, we try multiple variations of the same exercise.
@@ -378,7 +276,7 @@ We repeat this exercise using MedCod as the dependent variable to model whether 
     reg.data3<-try(glm(model,data=athlete_events2, na.action = na.exclude ),silent=TRUE) #Data has to be Count in front of Athlete events
     #summary(reg.data3)
 
-        stargazer(reg.data1,reg.data2,reg.data3, title="GLM Regression Results for Gold Medal", column.labels=c("Without Year and Sport","With Year","With Sport"),no.space=TRUE,float=FALSE,omit = c("Sex","Year","Sport"),omit.labels = c("Control for Sex","Control for Year","Control for Sport"),  style="qje", header=FALSE)
+        stargazer(reg.data1,reg.data2,reg.data3, title="GLM Regression Results for Medal across models on Appearances", column.labels=c("Without Year and Sport","With Year","With Sport"),no.space=TRUE, omit = c("Sex","Year","Sport"),omit.labels = c("Control for Sex","Control for Year","Control for Sport"),  style="qje", header=FALSE)
 
 ```
 
@@ -387,10 +285,10 @@ We see that even if we change the model by dropping one or both of Sport and Yea
 ```{r regappearmedalrecent, echo=FALSE,results='asis'}
 athlete_events2recent$Year<-as.factor(athlete_events2recent$Year)
 
-    model<-(Medcod~ Count2+Age+ Height+ Weight+Sex +as.factor(Year)+Sport)#Count is the one that counts unique years
-    reg.data<-try(glm(model,data=athlete_events2recent, na.action = na.exclude ),silent=TRUE) #Data has to be Count in front of Athlete events
+    model<-(Medcod~ Count2+Age+ Height+ Weight+Sex +Year+Sport)#Count is the one that counts unique years
+    reg.data<-try(glm(model,data=athlete_events2recent, na.action = na.exclude ),silent=TRUE) 
     
-     stargazer(reg.data, title="GLM Regression Results for Medal after 1950", column.labels=c("Whether Medal"),no.space=TRUE,float=FALSE,omit = c("Sex","Year","Sport"),omit.labels = c("Sex","Year","Sport"),  style="qje", header=FALSE, covariate.labels = c("Appearances", "Age", "Height",
+     stargazer(reg.data, title="GLM Regression Results for Medal after 1950 on Appearances", column.labels=c("Whether Medal"),no.space=TRUE, omit = c("Sex","Year","Sport"),omit.labels = c("Sex","Year","Sport"),  style="qje", header=FALSE, covariate.labels = c("Appearances", "Age", "Height",
                                "Weight"))
 ```
 
@@ -398,11 +296,115 @@ When we take only recent cases, that is Olympics after 1950, we see that the res
 
 \section{ToDo}
 The source of this data is https://www.kaggle.com/heesoo37/120-years-of-olympic-history-athletes-and-results/metadata.
-See if multi medals
+See if multi medal people have this too.
+Remove the Print Commands since we have Stargazer now.
 \begin{itemize}
 \item Limitations
 \item Titles for all graphs
 \end{itemize}
+
+\section{Extra Analyses}
+THIS IS FROM THE SECTION REGRESSION
+
+\subsection{Controlling for Sport}
+In order to better understand the role age plays, we run regressions on subgroups of sports. We present a table of estimates of Age where the p value is less than 0.05. 
+```{r controllingforsport, echo=FALSE, message=FALSE, warning=FALSE,results='asis'}
+##Controlling for sport
+
+impact3<-data.frame()
+try(
+  for (i in 1:length(athlete_events$Sport)){
+    ath<-filter(athlete_events,athlete_events$Sport==unique(athlete_events$Sport)[i])
+    model<-(Medcod~Age+Height+Weight)
+    reg.data<-try(glm(model,data=ath, na.action = na.exclude ),silent=TRUE)
+    summary(reg.data)
+    impact3[i,1]<-unique(athlete_events$Sport)[i]
+    impact3[i,2]<-summary(reg.data)$coefficients[,1][2]
+    impact3[i,3]<-summary(reg.data)$coefficients[,4][2]
+    impact3[i,4]<-summary(reg.data)$coefficients[,1][3]
+    impact3[i,5]<-summary(reg.data)$coefficients[,4][2]
+    impact3[i,6]<-summary(reg.data)$coefficients[,1][4]
+    impact3[i,7]<-summary(reg.data)$coefficients[,4][2]
+  },silent = TRUE)
+colnames(impact3)<-c("Sport","Age","AgeP","Height","heightP","Weight","WeightP")
+
+impact3age<-filter(impact3,impact3$AgeP<0.05)
+impact3age<-select(impact3age,"Sport","Age")
+impact3age<-impact3age[order(impact3age$Age,decreasing = TRUE),]
+#print(impact3age)
+kable(impact3age,caption = "Impact of higher age on medal probability across sports, statistically significant")
+#stargazer(impact3age, summary = FALSE, rownames = FALSE,header=FALSE)
+```
+We see that Age has a different role to play across sports. While `r impact3age$Sport[1]` sees the maximum positive impact of age, `r impact3age$Sport[length(impact3age$Sport)]`sees the maximum negative impact of age. All sports that have a negative sign, have a negative impact of increasing age, on the likelihood of a medal.
+
+
+\subsection{Controlling for Sport and Year}
+```{r controllingforsportyear,echo=FALSE, message=FALSE, warning=FALSE,results='asis'}
+###Controlling for year
+impact<-data.frame()
+try(
+for (i in 1:length(athlete_events$Sport)){
+  ath<-filter(athlete_events,athlete_events$Sport==unique(athlete_events$Sport)[i])
+model<-(Medcod~Age+Height+Weight+as.factor(Year))
+reg.data<-try(lm(model,data=ath, na.action = na.exclude ),silent=TRUE)
+summary(reg.data)
+impact[i,1]<-unique(athlete_events$Sport)[i]
+impact[i,2]<-summary(reg.data)$coefficients[,1][2]
+impact[i,3]<-summary(reg.data)$coefficients[,4][2]
+impact[i,4]<-summary(reg.data)$coefficients[,1][3]
+impact[i,5]<-summary(reg.data)$coefficients[,4][2]
+impact[i,6]<-summary(reg.data)$coefficients[,1][4]
+impact[i,7]<-summary(reg.data)$coefficients[,4][2]
+},silent = TRUE)
+colnames(impact)<-c("Sport","Age","AgeP","Height","heightP","Weight","WeightP")
+
+impactage<-filter(impact,impact$AgeP<0.05)
+impactage<-select(impactage,"Sport","Age")
+impactage<-impactage[order(impactage$Age,decreasing = TRUE),]
+#print(impactage)
+kable(impactage,caption = "Impact of higher age on medal probability across sports controlling for year, statistically significant")
+#stargazer(impactage, summary = FALSE, rownames = FALSE,header=FALSE)
+```
+I also control for Years as factors and repeat the analysis. While `r impactage$Sport[1]` sees the maximum positive impact of age, `r impactage$Sport[length(impactage$Sport)]`sees the least impact of age.  While controlling for years, we see that there is no sport that has a negative impact on likelihood of medal due to age. 
+
+\subsection{Controlling for Event and Year}
+```{r controllingforevent,echo=FALSE, message=FALSE, warning=FALSE,results='asis'}
+###Controlling for Event
+impact2<-data.frame()
+try(
+  for (i in 1:length(athlete_events$Event)){
+    ath<-filter(athlete_events,athlete_events$Event==unique(athlete_events$Event)[i])
+    model<-(Medcod~Age+Height+Weight+as.factor(Year))
+    reg.data<-try(lm(model,data=ath, na.action = na.exclude ),silent=TRUE)
+    summary(reg.data)
+    impact2[i,1]<-unique(athlete_events$Event)[i]
+    impact2[i,2]<-summary(reg.data)$coefficients[,1][2]
+    impact2[i,3]<-summary(reg.data)$coefficients[,4][2]
+    impact2[i,4]<-summary(reg.data)$coefficients[,1][3]
+    impact2[i,5]<-summary(reg.data)$coefficients[,4][2]
+    impact2[i,6]<-summary(reg.data)$coefficients[,1][4]
+    impact2[i,7]<-summary(reg.data)$coefficients[,4][2]
+  },silent = TRUE)
+colnames(impact2)<-c("Event","Age","AgeP","Height","heightP","Weight","WeightP")
+
+impact2age<-filter(impact2,impact2$AgeP<0.05)
+impact2age<-select(impact2age,"Event","Age")
+impact2age<-impact2age[order(impact2age$Age,decreasing = TRUE),]
+#print(impact2age)
+kable(impact2age,caption = "Impact of higher age on medal probability across Events controlling for Year, statistically significant")
+#stargazer(impact2age, summary = FALSE, rownames = FALSE,header=FALSE)
+```
+I go one level deeper and look at the same analysis at event level. An event is one rendition of a sport. For example Swimming is a sport but 100m, 200m and 100m backstroke are different events. While `r impact2age$Sport[1]` sees the maximum positive impact of age, `r impact2age$Sport[length(impact2age$Sport)]`sees the least impact of age. As my data has become granular, there are fewer observations per regression set and the impact of Age has also becomes significant for fewer events. 
+
+```{r workingwithgold, echo=FALSE, message=FALSE, warning=FALSE,results='asis'}
+##Working with Gold
+model<-(Gold~Age+Height+Weight+as.factor(Sex))
+reg.data<-try(lm(model,data=athlete_events, na.action = na.exclude ),silent=TRUE)
+stargazer(reg.data, title="GLM Regression Results on Whether Gold Medal", column.labels=c("Whether Gold Medal"),no.space=TRUE, omit = "Sex",  style="qje", add.lines = list(c("Gender Controls", "Yes")), header=FALSE)
+#summary(reg.data) 
+#3 WHAT IS THIS DOING HERE? IT IS NOT RUN OR SHOWN ANYWHere
+```
+
 
 
 
