@@ -14,11 +14,11 @@ editor_options:
   chunk_output_type: console
 ---
 \begin{abstract}
-Using a data of over 120 years of Olympic history, I find that the mean age of medal winners is higher than that of non-medal winners. This relationship is more pronounced in the case of Gold medalists. I hypothesize that Age is a proxy for experience of Olympic Games and use show that the probability of getting a medal in the second appearance is higher than that in the first one. This could be due to experience, better handling of pressure, and better preparation. Our results are robust to change in models, controls, proxies, and years. My results offer 'significant' hope to non-medalists at Tokyo Olympics.
+Using data of over 120 years of Olympic history, I find that the mean age of medal winners is higher than that of non-medal winners. This relationship is more pronounced in the case of Gold medalists. I hypothesize that Age is a proxy for the experience of the Olympic Games and use show that the probability of getting a medal in the second appearance is higher than that in the first one. This could be due to experience, better handling of pressure, and better preparation. Our results are robust to change in models, controls, proxies, and years. My results offer 'significant' hope to non-medalists at Tokyo Olympics.
 \end{abstract}
 
 \section{Introduction}
-I look at the age of athletes that have competed in Olympics and see that there is a difference between the age of those who got a medal and those who did not. This difference is statistically significant post 1950. We examine this further and see that the difference is more pronounced in case of Gold medalists and non-medalists. While the difference is not much, in my opinion higher age would lead to slower reflexes and worse performance. I therefore explore whether there is a component of experience in this. I use the number of appearances in Olympics as a measure of experience. I hypothesize that more exposure to the big stage would allow players to hold their nerves and therefore improve their performance. There are a host of psychological factors at play here as well. There is fear of repeated non-performance following a medal-less performance in the first time. I find that athletes are more likely to get a medal in their subsequent appearances. Out results are consistent in direction when we control for Years, Sports, Age, Gender, Weight and Height. Apart from establishing the role of experince, my results offer a ray of statistical hope to non-medalists from Tokyo Olympics.
+I look at the age of athletes that have competed in Olympics and see that there is a difference between the age of those who got a medal and those who did not. This difference is statistically significant post 1950. We examine this further and see that the difference is more pronounced in case of Gold medalists and non-medalists. While the difference is not much, in my opinion higher age would lead to slower reflexes and worse performance. I therefore explore whether there is a component of experience in this. I use the number of appearances in Olympics as a measure of experience. I hypothesize that more exposure to the big stage would allow players to hold their nerves and therefore improve their performance. There are a host of psychological factors at play here as well. There is fear of repeated non-performance following a medal-less performance in the first time. I find that athletes are more likely to get a medal in their subsequent appearances. Out results are consistent in direction when we control for Years, Sports, Age, Gender, Weight and Height. Apart from establishing the role of experience, my results offer a ray of statistical hope to non-medalists from Tokyo Olympics.
 
 Our analysis does not include data from Tokyo Olympics in 2021. Since we use more than a century worth of data, I expect my results to hold through. 
 
@@ -180,14 +180,14 @@ athmulti = do.call(rbind, datalist)
 ```
 
 I look at Olympians who have participated in multiple versions of Olympics across years and have bagged at least one medal. I filter this to see whether the medal tally in subsequent appearances. I hypothesize that it is hard to maintain supremacy in such a competitive tournament and athletes would not be able to win in subsequent versions.
-We see a list of `r length(unique(athmulti$ID))` athletes that have competed in multiple Olympics with the highest being `r athmulti$Name[athmulti$Count==max(athmulti$Count)][1]` Olympics. We do not consider breaks. For example if an athlete competed in two Olympics across 8 years, we still consider that as two participations irrespective of whether it was consecutive or not.
+We see a list of `r length(unique(athmulti$ID))` athletes that have competed in multiple Olympics with the highest being `r athmulti$Name[athmulti$Count==max(athmulti$Count)][1]` Olympics. We do not consider breaks. For example if an athlete competed in two Olympics across 8 years, we still consider that as two appearances irrespective of whether it was consecutive or not.
 
 \subsection{Pooled}
 
 ```{r medalpooled,echo=FALSE}
 athmultimedalpooled<-athmulti%>%group_by(Count)%>%summarise(AvgMedals=mean(Medcod)) #This is overall, showing no fun
 m1<-ggplot(athmultimedalpooled, aes(x=Count,y= AvgMedals))
-m1<-m1+geom_bar(stat = "identity")+xlab("Appearance")+ylab("Average Number of Medals") +labs(title = "Average Number of Medals across Appearances")#Now olders are winning medals
+m1<-m1+geom_bar(stat = "identity")+xlab("Appearance")+ylab("Average Number of Medals") +labs(title = "Average Number of Medals across Appearances")#Now older are winning medals
 print(m1)
 #t.test(athmulti$Medcod[athmulti$Count==1],athmulti$Medcod[athmulti$Count==2])
 ```
